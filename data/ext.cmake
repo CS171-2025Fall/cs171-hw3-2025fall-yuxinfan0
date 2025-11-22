@@ -1,8 +1,8 @@
 # All packages required
 CPMAddPackage("gh:fmtlib/fmt#9.1.0")
-CPMAddPackage("gh:nlohmann/json@3.11.2")
-CPMAddPackage("gh:tinyobjloader/tinyobjloader#v2.0.0rc10")
-CPMAddPackage("gh:richgel999/miniz#3.0.2")
+CPMAddPackage("gh:nlohmann/json@3.11.3")
+CPMAddPackage("gh:tinyobjloader/tinyobjloader#v2.0.0rc13")
+CPMAddPackage("gh:richgel999/miniz#master")
 
 CPMAddPackage(
   NAME spdlog

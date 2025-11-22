@@ -16,21 +16,22 @@ RDR_NAMESPACE_BEGIN
 
 bool AABB::isOverlap(const AABB &other) const {
   return ((other.low_bnd[0] >= this->low_bnd[0] &&
-              other.low_bnd[0] <= this->upper_bnd[0]) ||
-             (this->low_bnd[0] >= other.low_bnd[0] &&
-                 this->low_bnd[0] <= other.upper_bnd[0])) &&
+           other.low_bnd[0] <= this->upper_bnd[0]) ||
+          (this->low_bnd[0] >= other.low_bnd[0] &&
+           this->low_bnd[0] <= other.upper_bnd[0])) &&
          ((other.low_bnd[1] >= this->low_bnd[1] &&
-              other.low_bnd[1] <= this->upper_bnd[1]) ||
-             (this->low_bnd[1] >= other.low_bnd[1] &&
-                 this->low_bnd[1] <= other.upper_bnd[1])) &&
+           other.low_bnd[1] <= this->upper_bnd[1]) ||
+          (this->low_bnd[1] >= other.low_bnd[1] &&
+           this->low_bnd[1] <= other.upper_bnd[1])) &&
          ((other.low_bnd[2] >= this->low_bnd[2] &&
-              other.low_bnd[2] <= this->upper_bnd[2]) ||
-             (this->low_bnd[2] >= other.low_bnd[2] &&
-                 this->low_bnd[2] <= other.upper_bnd[2]));
+           other.low_bnd[2] <= this->upper_bnd[2]) ||
+          (this->low_bnd[2] >= other.low_bnd[2] &&
+           this->low_bnd[2] <= other.upper_bnd[2]));
 }
 
 bool AABB::intersect(const Ray &ray, Float *t_in, Float *t_out) const {
   // TODO(HW3): implement ray intersection with AABB.
+  // #TODO: implement ray intersection with AABB.
   // ray distance for two intersection points are returned by pointers.
   //
   // This method should modify t_in and t_out as the "time"
@@ -43,7 +44,30 @@ bool AABB::intersect(const Ray &ray, Float *t_in, Float *t_out) const {
   //    for getting the inverse direction of the ray.
   // @see Min/Max/ReduceMin/ReduceMax
   //    for vector min/max operations.
-  UNIMPLEMENTED;
+  // UNIMPLEMENTED;
+  Float t_min = ray.t_min;
+  Float t_max = ray.t_max;
+  const Vec3f &origin = ray.origin;
+  const Vec3f &inv_dir = ray.safe_inverse_direction;
+
+  for (int i = 0; i < 3; ++i) {
+    Float t0 = (low_bnd[i] - origin[i]) * inv_dir[i];
+    Float t1 = (upper_bnd[i] - origin[i]) * inv_dir[i];
+    if (inv_dir[i] < 0.0f)
+      std::swap(t0, t1);
+
+    t_min = t0 > t_min ? t0 : t_min;
+    t_max = t1 < t_max ? t1 : t_max;
+
+    if (t_max < t_min)
+      return false;
+  }
+
+  if (t_in)
+    *t_in = t_min;
+  if (t_out)
+    *t_out = t_max;
+  return true;
 }
 
 /* ===================================================================== *
@@ -53,9 +77,10 @@ bool AABB::intersect(const Ray &ray, Float *t_in, Float *t_out) const {
  * ===================================================================== */
 
 bool TriangleIntersect(Ray &ray, const uint32_t &triangle_index,
-    const ref<TriangleMeshResource> &mesh, SurfaceInteraction &interaction) {
+                       const ref<TriangleMeshResource> &mesh,
+                       SurfaceInteraction &interaction) {
   using InternalScalarType = Double;
-  using InternalVecType    = Vec<InternalScalarType, 3>;
+  using InternalVecType = Vec<InternalScalarType, 3>;
 
   AssertAllValid(ray.direction, ray.origin);
   AssertAllNormalized(ray.direction);
@@ -67,11 +92,12 @@ bool TriangleIntersect(Ray &ray, const uint32_t &triangle_index,
   assert(v_idx.z < mesh->vertices.size());
 
   InternalVecType dir = Cast<InternalScalarType>(ray.direction);
-  InternalVecType v0  = Cast<InternalScalarType>(vertices[v_idx[0]]);
-  InternalVecType v1  = Cast<InternalScalarType>(vertices[v_idx[1]]);
-  InternalVecType v2  = Cast<InternalScalarType>(vertices[v_idx[2]]);
+  InternalVecType v0 = Cast<InternalScalarType>(vertices[v_idx[0]]);
+  InternalVecType v1 = Cast<InternalScalarType>(vertices[v_idx[1]]);
+  InternalVecType v2 = Cast<InternalScalarType>(vertices[v_idx[2]]);
 
   // TODO(HW3): implement ray-triangle intersection test.
+  // #TODO: implement ray-triangle intersection test.
   // You should compute the u, v, t as InternalScalarType
   //
   //   InternalScalarType u = ...;
@@ -95,14 +121,37 @@ bool TriangleIntersect(Ray &ray, const uint32_t &triangle_index,
   InternalScalarType u = InternalScalarType(0);
   InternalScalarType v = InternalScalarType(0);
   InternalScalarType t = InternalScalarType(0);
-  UNIMPLEMENTED;
+  // UNIMPLEMENTED;
+  InternalVecType E1 = v1 - v0;
+  InternalVecType E2 = v2 - v0;
+  InternalVecType P = Cross(dir, E2);
+  InternalScalarType det = Dot(E1, P);
 
+  if (std::abs(det) < 1e-12)
+    return false;
+
+  InternalScalarType inv_det = 1.0 / det;
+  InternalVecType T = Cast<InternalScalarType>(ray.origin) - v0;
+
+  u = Dot(T, P) * inv_det;
+  if (u < 0.0 || u > 1.0)
+    return false;
+
+  InternalVecType Q = Cross(T, E1);
+  v = Dot(dir, Q) * inv_det;
+  if (v < 0.0 || u + v > 1.0)
+    return false;
+
+  t = Dot(E2, Q) * inv_det;
+
+  if (!ray.withinTimeRange(t))
+    return false;
   // We will reach here if there is an intersection
 
   CalculateTriangleDifferentials(interaction,
-      {static_cast<Float>(1 - u - v), static_cast<Float>(u),
-          static_cast<Float>(v)},
-      mesh, triangle_index);
+                                 {static_cast<Float>(1 - u - v),
+                                  static_cast<Float>(u), static_cast<Float>(v)},
+                                 mesh, triangle_index);
   AssertNear(interaction.p, ray(t));
   assert(ray.withinTimeRange(t));
   ray.setTimeMax(t);
@@ -112,21 +161,19 @@ bool TriangleIntersect(Ray &ray, const uint32_t &triangle_index,
 void Accel::setTriangleMesh(const ref<TriangleMeshResource> &mesh) {
   // Build the bounding box
   AABB bound(Vec3f(Float_INF, Float_INF, Float_INF),
-      Vec3f(Float_MINUS_INF, Float_MINUS_INF, Float_MINUS_INF));
+             Vec3f(Float_MINUS_INF, Float_MINUS_INF, Float_MINUS_INF));
   for (auto &vertex : mesh->vertices) {
-    bound.low_bnd   = Min(bound.low_bnd, vertex);
+    bound.low_bnd = Min(bound.low_bnd, vertex);
     bound.upper_bnd = Max(bound.upper_bnd, vertex);
   }
 
-  this->mesh  = mesh;   // set the pointer
-  this->bound = bound;  // set the bounding box
+  this->mesh = mesh;   // set the pointer
+  this->bound = bound; // set the bounding box
 }
 
 void Accel::build() {}
 
-AABB Accel::getBound() const {
-  return bound;
-}
+AABB Accel::getBound() const { return bound; }
 
 bool Accel::intersect(Ray &ray, SurfaceInteraction &interaction) const {
   bool success = false;

@@ -1,3 +1,7 @@
+if(APPLE AND NOT OpenMP_ROOT AND EXISTS "/opt/homebrew/opt/libomp")
+    set(OpenMP_ROOT "/opt/homebrew/opt/libomp")
+endif()
+
 find_package(OpenMP REQUIRED)
 
 # Include source files without main.cpp as lib
